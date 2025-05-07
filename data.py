@@ -9,14 +9,19 @@ import pickle
 
 
 class LegoDatasetLazy(Dataset):
-    def __init__(self, partition):
-        self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
-        self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
+    def __init__(self, partition, cap=None):
+        # self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
+        # self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
+
+        self.images_pth = '/root/nerf_synthetic/lego/'
+        self.transforms = f'/root/nerf_synthetic/lego/transforms_{partition}.json'
 
         with open(self.transforms, 'r') as f:
             self.transforms = json.load(f)
             self.camera_angle_x = self.transforms['camera_angle_x']
             self.frames = self.transforms['frames']
+            if cap is not None:
+                self.frames = self.frames[:cap]
         
         self.images = []
         self.image_paths = []
@@ -34,7 +39,7 @@ class LegoDatasetLazy(Dataset):
             self.images.append((image, alpha, focal_length, transform))
     
     def __len__(self, ):
-        return len(self.transforms) * 800 * 800
+        return len(self.frames) * 800 * 800
     
     def get_ray(self, transform_ind, i, j):
         # print(transform_ind, i, j)
@@ -81,14 +86,16 @@ def collate_rays(batch):
         'color': colors,
         'alpha': alphas,
         'i': [x['i'] for x in batch],
-        'j': [x['i'] for x in batch],
+        'j': [x['j'] for x in batch],
         'image_path': [x['image_path'] for x in batch],
     }
 
     
 if __name__ == "__main__":
-    data = LegoDatasetLazy('train')
+    data = LegoDatasetLazy('val')
     print(data[0])
-    for i in range(len(data)):
-        print(data[i]['color'])
+    print(data[0])
+    print(data[97482])
+    # for i in range(len(data)):
+    #     print(data[i]['color'])
     

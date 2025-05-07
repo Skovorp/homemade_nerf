@@ -1,5 +1,6 @@
 train:
-  batch_size: 4096
+  train_batch_size: 4096
+  val_batch_size: 4096
   epochs: 8
   lr: 3.0e-4
   weight_decay: 0.00

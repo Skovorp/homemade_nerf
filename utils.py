@@ -36,7 +36,7 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
     """
 
     def raw2alpha(raw, dists, act_fn=F.relu):
-        print("raw mean:", raw.mean())
+        # print("raw mean:", raw.mean())
         return 1.0 - torch.exp(-act_fn(raw) * dists)
 
     # Compute distances between samples
@@ -55,7 +55,7 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
         noise = torch.randn_like(raw[..., 3]) * raw_noise_std
 
     alpha = raw2alpha(raw[..., 3] + noise, dists)
-    print("mean alpha:", alpha.mean())
+    # print("mean alpha:", alpha.mean())
 
     weights = alpha * torch.cumprod(
         torch.cat([
