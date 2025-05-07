@@ -2,7 +2,8 @@ train:
   batch_size: 4096
   epochs: 8
   lr: 3.0e-4
-  weight_decay: 0.01
+  weight_decay: 0.00
+  load_cache: true
 nerf:
   sample_points: 64
 model:

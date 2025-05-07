@@ -11,6 +11,7 @@ class Nerf(nn.Module):
         for _ in range(num_layers - 1):
             layers.append(nn.Linear(d_model, d_model))
             layers.append(nn.ReLU())
+            layers.append(nn.BatchNorm1d(d_model))
 
         self.stack = nn.Sequential(*layers)
 
@@ -18,5 +19,6 @@ class Nerf(nn.Module):
         self.out_layer = nn.Linear(d_model, 4)
 
     def forward(self, x):
+        x = x / 4
         x = self.stack(x)
         return self.out_layer(x)

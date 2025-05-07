@@ -4,70 +4,70 @@ from torchvision.io import read_image
 
 import json
 import os
+from tqdm import tqdm
+import pickle
 
 
-class LegoDataset(Dataset):
+class LegoDatasetLazy(Dataset):
     def __init__(self, partition):
-        if partition == 'train':
-            self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
-            self.transforms = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_train.json'
+        self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
+        self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
 
         with open(self.transforms, 'r') as f:
             self.transforms = json.load(f)
             self.camera_angle_x = self.transforms['camera_angle_x']
             self.frames = self.transforms['frames']
-        self.rays = []
-        self.process_images()
         
-    
-    def process_images(self, ):
+        self.images = []
+        self.image_paths = []
         for frame in self.frames:
-            img = os.path.join(self.images_pth, frame['file_path'][2:] + '.png')
-            img = read_image(img)
             fov = torch.tensor(frame['rotation'])
             focal_length = 800 / (2.0 * torch.tan(fov / 2.0))
+            img_path = os.path.join(self.images_pth, frame['file_path'][2:] + '.png')
+            self.image_paths.append(img_path)
+            img = read_image(img_path)
+            img = img / 255
+            image = img[:3, :, :] 
+            alpha = img[3:, :, :]
+            image = image * alpha + (1 - alpha)
             transform = torch.tensor(frame['transform_matrix'])
-            self.get_rays_from_image(img, transform, focal_length)
-            break
-        
-    def get_rays_from_image(self, img, transform, focal_length):
-        H, W = img.shape[1], img.shape[2]
-        img = img / 255
-        image = img[:3, :, :] 
-        alpha = img[3:, :, :]
-        image = image * alpha + (1 - alpha)
-        print("image", ((image == 1) * 1.0).mean())
-        res = []
-        for i in range(H):
-            for j in range(W):
-                # Camera-space coordinates
-                x = (j - W / 2) / focal_length
-                y = -(i - H / 2) / focal_length
-                z = -1.0  # pointing outwards in OpenGL convention
-
-                direction_camera = torch.tensor([x, y, z], dtype=torch.float32)
-
-                # Convert to world space
-                rotation = transform[:3, :3]
-                direction_world = rotation @ direction_camera
-                direction_world = direction_world / torch.norm(direction_world)
-
-                ray = {
-                    'origin': transform[:3, 3],  # (3,)
-                    'direction': direction_world,  # (3,)
-                    'color': image[:, i, j],       # (3,)
-                    'alpha': alpha[0, i, j]       # scalar
-                }
-                res.append(ray)
-        self.rays.extend(res)
-
+            self.images.append((image, alpha, focal_length, transform))
+    
     def __len__(self, ):
-        return len(self.rays)
+        return len(self.transforms) * 800 * 800
     
-    def __getitem__(self, i):
-        # outputs color, ray origin, direction, lower and upper bounds
-        return self.rays[i] 
+    def get_ray(self, transform_ind, i, j):
+        # print(transform_ind, i, j)
+        image, alpha, focal_length, transform = self.images[transform_ind]
+
+        x = (j - 800 / 2) / focal_length
+        y = -(i - 800 / 2) / focal_length
+        z = -1.0  # pointing outwards in OpenGL convention
+
+        direction_camera = torch.tensor([x, y, z], dtype=torch.float32)
+
+        # Convert to world space
+        rotation = transform[:3, :3]
+        direction_world = rotation @ direction_camera
+        direction_world = direction_world / torch.norm(direction_world)
+
+        return {
+            'origin': transform[:3, 3],  # (3,)
+            'direction': direction_world,  # (3,)
+            'color': image[:, i, j],       # (3,)
+            'alpha': alpha[0, i, j]       # scalar
+        }
     
+    def __getitem__(self, ind):
+        transform_ind = ind // (800 * 800)
+        ind = ind % (800 * 800)
+        i = ind // 800
+        j = ind % 800
+        res = self.get_ray(transform_ind, i, j)
+        res['i'] = i
+        res['j'] = j
+        res['image_path'] = self.image_paths[transform_ind]
+        return res
     
 def collate_rays(batch):
     origins = torch.stack([ray['origin'] for ray in batch], dim=0)    # (N, 3)
@@ -79,12 +79,15 @@ def collate_rays(batch):
         'origin': origins,
         'direction': directions,
         'color': colors,
-        'alpha': alphas
+        'alpha': alphas,
+        'i': [x['i'] for x in batch],
+        'j': [x['i'] for x in batch],
+        'image_path': [x['image_path'] for x in batch],
     }
 
     
 if __name__ == "__main__":
-    data = LegoDataset('train')
+    data = LegoDatasetLazy('train')
     print(data[0])
     for i in range(len(data)):
         print(data[i]['color'])

@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 
 def sample_points(origins, directions, N_samples):
-    near, far = 0, 4
+    near, far = 2, 6
     bs = origins.shape[0]
     t_vals = torch.linspace(0., 1., steps=N_samples, device=origins.device)
     z_vals = near * (1. - t_vals) + far * t_vals
@@ -36,6 +36,7 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
     """
 
     def raw2alpha(raw, dists, act_fn=F.relu):
+        print("raw mean:", raw.mean())
         return 1.0 - torch.exp(-act_fn(raw) * dists)
 
     # Compute distances between samples
@@ -54,6 +55,7 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
         noise = torch.randn_like(raw[..., 3]) * raw_noise_std
 
     alpha = raw2alpha(raw[..., 3] + noise, dists)
+    print("mean alpha:", alpha.mean())
 
     weights = alpha * torch.cumprod(
         torch.cat([
