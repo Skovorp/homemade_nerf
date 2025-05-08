@@ -2,7 +2,7 @@ import yaml
 from data import LegoDatasetLazy, collate_rays
 from torch.utils.data import DataLoader
 from model import Nerf
-from utils import sample_points, render
+from utils import sample_points, render, psnr
 
 import torch
 from datetime import datetime
@@ -10,11 +10,15 @@ import os
 import torchvision
 from tqdm import tqdm
 from collections import defaultdict
+import wandb
 
 
 with open('cfg.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
+wandb.init(
+    config=cfg,
+    project="homemade_nerf")
 
 train_set = LegoDatasetLazy('train')
 train_loader = DataLoader(
@@ -23,7 +27,7 @@ train_loader = DataLoader(
     collate_fn=collate_rays,
     shuffle=True
 )
-val_set = LegoDatasetLazy('val', cap=1)
+val_set = LegoDatasetLazy('val', cap=cfg['train']['val_cap'])
 val_loader = DataLoader(
     val_set,
     batch_size=cfg['train']['val_batch_size'],
@@ -33,7 +37,7 @@ val_loader = DataLoader(
 print("Trainset len:", len(train_set))
 print("Valset   len:", len(val_set))
 
-device = torch.device('cuda')
+device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 model = Nerf(**cfg['model']).to(device)
 
 # Optimizer
@@ -47,7 +51,7 @@ optimizer = torch.optim.AdamW(
 n_sample = cfg['nerf']['sample_points']
 for epoch in range(cfg['train']['epochs']):
     model.train()
-    for step, rays in enumerate(train_loader):
+    for step, rays in tqdm(enumerate(train_loader), total=cfg['train']['steps_per_epoch']):
         origin = rays['origin'].to(device)
         direction = rays['direction'].to(device)
         target_color = rays['color'].to(device)
@@ -64,9 +68,13 @@ for epoch in range(cfg['train']['epochs']):
         loss = ((color  - target_color) ** 2).mean()
         loss.backward()
         optimizer.step()
-        print(((color > 0.95) * 1.0).mean(), color.mean())
-        print(step, '\tloss', loss)
-        if step > 1000:
+        wandb.log({
+            'loss': loss,
+            'psnr': psnr(loss),
+            'part_white': ((color > 0.95) * 1.0).mean(),
+            'color_mean': color.mean()
+        })
+        if step == cfg['train']['steps_per_epoch'] - 1:
             break
     
     model.eval()
@@ -76,6 +84,8 @@ for epoch in range(cfg['train']['epochs']):
         list_js = []
         list_paths = []
         colors = []
+        losses = []
+        cnt = 0
         for rays in tqdm(val_loader):
             origin = rays['origin'].to(device)
             direction = rays['direction'].to(device)
@@ -87,30 +97,27 @@ for epoch in range(cfg['train']['epochs']):
             vals = model(points)
             vals = vals.reshape(bs, n_sample, 4)
             color = render(vals, z_vals, direction)
-            loss = ((color  - target_color) ** 2).mean()
+            losses.append(((color  - target_color) ** 2).sum())
+            cnt += bs
             
-            # for idx, path in enumerate(rays['image_path']):
-            # image_data[path]['i'].append(rays['i'][idx])
-            # image_data[path]['j'].append(rays['j'][idx])
-            # image_data[path]['color'].append(color[idx].cpu())
             list_is.extend(rays['i'])
             list_js.extend(rays['j'])
             list_paths.extend(rays['image_path'])
             colors.append(color.cpu())
+        
+        loss = torch.tensor(losses).sum() / cnt
+        wandb.log({
+            'val_loss': loss,
+            'val_psnr': psnr(loss)},
+            commit=False
+        )
             
-            
-            # for k in range(len(rays['image_path'])):
-            #     pth = rays['image_path'][k]
-            #     if pth not in val_images:
-            #         val_images[pth] = torch.ones(3, 800, 800)
-            #         val_images[pth][1, :, :] = 0
-            #     val_images[pth][:, rays['i'][k], rays['j'][k]] = color[k, :].cpu()
         path_to_indices = defaultdict(list)
         for idx, path in enumerate(list_paths):
             path_to_indices[path].append(idx)
         
         
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         save_root = f'val_outputs_{timestamp}_epoch_{epoch}/'
         os.makedirs(save_root, exist_ok=True)
         print("saving images")
@@ -118,9 +125,6 @@ for epoch in range(cfg['train']['epochs']):
         colors = torch.cat(colors, dim=0)  # [N, 3]
         is_tensor = torch.tensor(list_is, dtype=torch.long)
         js_tensor = torch.tensor(list_js, dtype=torch.long)
-        
-        # print(is_tensor)
-        # print(js_tensor)
         
         for path, indices in path_to_indices.items():
             idxs = torch.tensor(indices, dtype=torch.long)
@@ -132,7 +136,3 @@ for epoch in range(cfg['train']['epochs']):
             img[1, :, :] = 0
             img[:, i, j] = c.T  # assign all pixels at once
             torchvision.utils.save_image(img, save_root + os.path.basename(path))
-
-        
-        # for pth, img in val_images.items():
-        #     torchvision.utils.save_image(img, save_root + os.path.basename(pth))

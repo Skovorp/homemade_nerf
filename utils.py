@@ -1,6 +1,9 @@
 import torch
 import torch.nn.functional as F
 
+def psnr(x):
+    return -10 * torch.log(x) / torch.log(torch.tensor(10.))
+
 
 def sample_points(origins, directions, N_samples):
     near, far = 2, 6

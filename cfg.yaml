@@ -4,7 +4,8 @@ train:
   epochs: 8
   lr: 3.0e-4
   weight_decay: 0.00
-  load_cache: true
+  steps_per_epoch: 10
+  val_cap: 1
 nerf:
   sample_points: 64
 model:
