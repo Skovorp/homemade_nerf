@@ -8,7 +8,19 @@ def psnr(x):
 def sample_points(origins, directions, N_samples):
     near, far = 2, 6
     bs = origins.shape[0]
-    t_vals = torch.linspace(0., 1., steps=N_samples, device=origins.device)
+    
+    # bin_starts = torch.linspace(0., 1., steps=N_samples + 1, device=origins.device)[:N_samples]
+    # bin_ends = torch.linspace(0., 1., steps=N_samples + 1, device=origins.device)[1:]
+    # rands = torch.rand(N_samples, device=origins.device)
+    # t_vals = bin_starts * rands + bin_ends * (1 - rands)
+    
+    bin_starts = torch.linspace(0., 1., steps=N_samples + 1, device=origins.device)[:N_samples]
+    rands = torch.rand(bs, N_samples, device=origins.device)
+    t_vals = bin_starts.unsqueeze(0) + rands / N_samples
+    
+    # t_vals = torch.linspace(0., 1., steps=N_samples, device=origins.device)
+    
+    
     z_vals = near * (1. - t_vals) + far * t_vals
     z_vals = z_vals.expand(bs, N_samples)
     

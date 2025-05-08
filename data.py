@@ -11,10 +11,10 @@ import pickle
 
 class LegoDatasetLazy(Dataset):
     def __init__(self, partition, scale=1, cap=None):
-        # self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
-        # self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
-        self.images_pth = '/root/nerf_synthetic/lego/'
-        self.transforms = f'/root/nerf_synthetic/lego/transforms_{partition}.json'
+        self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
+        self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
+        # self.images_pth = '/root/nerf_synthetic/lego/'
+        # self.transforms = f'/root/nerf_synthetic/lego/transforms_{partition}.json'
 
         self.s = 800 // scale
         with open(self.transforms, 'r') as f:

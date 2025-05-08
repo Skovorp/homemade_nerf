@@ -20,14 +20,16 @@ with open('cfg.yaml', 'r') as f:
 
 wandb.init(
     config=cfg,
-    project="homemade_nerf")
+    project="homemade_nerf",
+    mode='disabled'    
+)
 
 train_set = LegoDatasetLazy('train', scale=cfg['train']['data_scale'])
 train_loader = DataLoader(
     train_set,
     batch_size=cfg['train']['train_batch_size'],
     collate_fn=collate_rays,
-    num_workers=8,
+    num_workers=cfg['train']['num_workers'],
     pin_memory=True,
     shuffle=True
 )
@@ -36,7 +38,7 @@ val_loader = DataLoader(
     val_set,
     batch_size=cfg['train']['val_batch_size'],
     collate_fn=collate_rays,
-    num_workers=8,
+    num_workers=cfg['train']['num_workers'],
     pin_memory=True,
     shuffle=False
 )
@@ -80,8 +82,8 @@ for epoch in range(cfg['train']['epochs']):
             'part_white': ((color > 0.95) * 1.0).mean(),
             'color_mean': color.mean()
         })
-        # if step == cfg['train']['steps_per_epoch'] - 1:
-        #     break
+        if step == 10: # cfg['train']['steps_per_epoch'] - 1:
+            break
     
     model.eval()
     with torch.no_grad():
