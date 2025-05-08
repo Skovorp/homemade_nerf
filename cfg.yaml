@@ -6,6 +6,7 @@ train:
   weight_decay: 0.00
   steps_per_epoch: 10
   val_cap: 1
+  data_scale: 4
 nerf:
   sample_points: 64
 model:

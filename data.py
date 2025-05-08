@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 from torchvision.io import read_image
+from torchvision.transforms import Resize
 
 import json
 import os
@@ -9,10 +10,10 @@ import pickle
 
 
 class LegoDatasetLazy(Dataset):
-    def __init__(self, partition, cap=None):
+    def __init__(self, partition, scale=1, cap=None):
         self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
         self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
-
+        self.s = 800 // scale
         # self.images_pth = '/root/nerf_synthetic/lego/'
         # self.transforms = f'/root/nerf_synthetic/lego/transforms_{partition}.json'
 
@@ -27,10 +28,13 @@ class LegoDatasetLazy(Dataset):
         self.image_paths = []
         for frame in self.frames:
             fov = torch.tensor(frame['rotation'])
-            focal_length = 800 / (2.0 * torch.tan(fov / 2.0))
+            focal_length = self.s / (2.0 * torch.tan(fov / 2.0))
             img_path = os.path.join(self.images_pth, frame['file_path'][2:] + '.png')
             self.image_paths.append(img_path)
             img = read_image(img_path)
+            if scale != 1:
+                img = Resize(size=(self.s,self.s))(img)
+            print(img.shape)
             img = img / 255
             image = img[:3, :, :] 
             alpha = img[3:, :, :]
@@ -39,14 +43,14 @@ class LegoDatasetLazy(Dataset):
             self.images.append((image, alpha, focal_length, transform))
     
     def __len__(self, ):
-        return len(self.frames) * 800 * 800
+        return len(self.frames) * self.s * self.s
     
     def get_ray(self, transform_ind, i, j):
         # print(transform_ind, i, j)
         image, alpha, focal_length, transform = self.images[transform_ind]
 
-        x = (j - 800 / 2) / focal_length
-        y = -(i - 800 / 2) / focal_length
+        x = (j - self.s / 2) / focal_length
+        y = -(i - self.s / 2) / focal_length
         z = -1.0  # pointing outwards in OpenGL convention
 
         direction_camera = torch.tensor([x, y, z], dtype=torch.float32)
@@ -64,10 +68,10 @@ class LegoDatasetLazy(Dataset):
         }
     
     def __getitem__(self, ind):
-        transform_ind = ind // (800 * 800)
-        ind = ind % (800 * 800)
-        i = ind // 800
-        j = ind % 800
+        transform_ind = ind // (self.s * self.s)
+        ind = ind % (self.s * self.s)
+        i = ind // self.s
+        j = ind % self.s
         res = self.get_ray(transform_ind, i, j)
         res['i'] = i
         res['j'] = j

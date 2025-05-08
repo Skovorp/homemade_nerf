@@ -20,14 +20,14 @@ wandb.init(
     config=cfg,
     project="homemade_nerf")
 
-train_set = LegoDatasetLazy('train')
+train_set = LegoDatasetLazy('train', scale=cfg['train']['data_scale'])
 train_loader = DataLoader(
     train_set,
     batch_size=cfg['train']['train_batch_size'],
     collate_fn=collate_rays,
     shuffle=True
 )
-val_set = LegoDatasetLazy('val', cap=cfg['train']['val_cap'])
+val_set = LegoDatasetLazy('val', cap=cfg['train']['val_cap'], scale=cfg['train']['data_scale'])
 val_loader = DataLoader(
     val_set,
     batch_size=cfg['train']['val_batch_size'],
@@ -132,7 +132,7 @@ for epoch in range(cfg['train']['epochs']):
             j = js_tensor[idxs]
             c = colors[idxs]  # [N, 3]
 
-            img = torch.ones(3, 800, 800)
+            img = torch.ones(3, 800 // cfg['train']['data_scale'], 800 // cfg['train']['data_scale'])
             img[1, :, :] = 0
             img[:, i, j] = c.T  # assign all pixels at once
             torchvision.utils.save_image(img, save_root + os.path.basename(path))
