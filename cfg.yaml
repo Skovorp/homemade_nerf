@@ -3,7 +3,7 @@ train:
   val_batch_size: 4096
   epochs: 8
   lr: 3.0e-4
-  weight_decay: 0.00
+  weight_decay: 0.01
   steps_per_epoch: 10
   val_cap: 1
   data_scale: 4
@@ -12,3 +12,4 @@ nerf:
 model:
   num_layers: 10
   d_model: 256
+  pe_l: 10

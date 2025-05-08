@@ -13,6 +13,8 @@ from collections import defaultdict
 import wandb
 
 
+timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
 with open('cfg.yaml', 'r') as f:
     cfg = yaml.safe_load(f)
 
@@ -25,6 +27,8 @@ train_loader = DataLoader(
     train_set,
     batch_size=cfg['train']['train_batch_size'],
     collate_fn=collate_rays,
+    num_workers=8,
+    pin_memory=True,
     shuffle=True
 )
 val_set = LegoDatasetLazy('val', cap=cfg['train']['val_cap'], scale=cfg['train']['data_scale'])
@@ -32,6 +36,8 @@ val_loader = DataLoader(
     val_set,
     batch_size=cfg['train']['val_batch_size'],
     collate_fn=collate_rays,
+    num_workers=8,
+    pin_memory=True,
     shuffle=False
 )
 print("Trainset len:", len(train_set))
@@ -116,9 +122,7 @@ for epoch in range(cfg['train']['epochs']):
         for idx, path in enumerate(list_paths):
             path_to_indices[path].append(idx)
         
-        
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        save_root = f'val_outputs_{timestamp}_epoch_{epoch}/'
+        save_root = f'val_outputs_{timestamp}/epoch_{epoch}/'
         os.makedirs(save_root, exist_ok=True)
         print("saving images")
         
