@@ -177,3 +177,5 @@ pyrightconfig.json
 
 nerf_synthetic/
 wandb/
+
+.DS_Store

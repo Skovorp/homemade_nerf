@@ -57,7 +57,7 @@ optimizer = torch.optim.AdamW(
 n_sample = cfg['nerf']['sample_points']
 for epoch in range(cfg['train']['epochs']):
     model.train()
-    for step, rays in tqdm(enumerate(train_loader), total=cfg['train']['steps_per_epoch']):
+    for step, rays in tqdm(enumerate(train_loader), total=len(train_loader)):
         origin = rays['origin'].to(device)
         direction = rays['direction'].to(device)
         target_color = rays['color'].to(device)
@@ -80,8 +80,8 @@ for epoch in range(cfg['train']['epochs']):
             'part_white': ((color > 0.95) * 1.0).mean(),
             'color_mean': color.mean()
         })
-        if step == cfg['train']['steps_per_epoch'] - 1:
-            break
+        # if step == cfg['train']['steps_per_epoch'] - 1:
+        #     break
     
     model.eval()
     with torch.no_grad():
