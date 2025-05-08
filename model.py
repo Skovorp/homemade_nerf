@@ -25,10 +25,13 @@ class Nerf(nn.Module):
         for _ in range(num_layers - 1):
             layers.append(nn.Linear(d_model, d_model))
             layers.append(nn.ReLU())
-            layers.append(nn.BatchNorm1d(d_model))
+            # layers.append(nn.BatchNorm1d(d_model))
         self.pe = PositionalEncoding(pe_l)
         self.stack = nn.Sequential(*layers)
         self.out_layer = nn.Linear(d_model, 4)
+        
+        self.out_layer.bias.data.fill_(0.)
+        self.out_layer.weight.data *= 1e-4 
 
     def forward(self, x):
         x = x / 4

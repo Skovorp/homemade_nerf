@@ -28,7 +28,7 @@ def sample_points(origins, directions, N_samples):
     return points, z_vals
 
 def render(raw_outp, z_vals, directions):
-    stuff = raw2outputs(raw_outp, z_vals, directions, white_bkgd=True)
+    stuff = raw2outputs(raw_outp, z_vals, directions, white_bkgd=True, raw_noise_std=1)
     return stuff[0]
 
 def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):

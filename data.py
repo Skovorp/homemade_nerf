@@ -11,10 +11,10 @@ import pickle
 
 class LegoDatasetLazy(Dataset):
     def __init__(self, partition, scale=1, cap=None):
-        self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
-        self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
-        # self.images_pth = '/root/nerf_synthetic/lego/'
-        # self.transforms = f'/root/nerf_synthetic/lego/transforms_{partition}.json'
+        # self.images_pth = '/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/'
+        # self.transforms = f'/Users/ksc/PycharmProjects/cv_nerf_proj/homemade_nerf/nerf_synthetic/lego/transforms_{partition}.json'
+        self.images_pth = '/root/nerf_synthetic/lego/'
+        self.transforms = f'/root/nerf_synthetic/lego/transforms_{partition}.json'
 
         self.s = 800 // scale
         with open(self.transforms, 'r') as f:
@@ -27,7 +27,7 @@ class LegoDatasetLazy(Dataset):
         self.images = []
         self.image_paths = []
         for frame in self.frames:
-            fov = torch.tensor(frame['rotation'])
+            fov = torch.tensor(self.camera_angle_x)
             focal_length = self.s / (2.0 * torch.tan(fov / 2.0))
             img_path = os.path.join(self.images_pth, frame['file_path'][2:] + '.png')
             self.image_paths.append(img_path)
@@ -35,7 +35,7 @@ class LegoDatasetLazy(Dataset):
             if scale != 1:
                 img = Resize(size=(self.s,self.s))(img)
             img = img / 255
-            image = img[:3, :, :] 
+            image = img[:3, :, :]
             alpha = img[3:, :, :]
             image = image * alpha + (1 - alpha)
             transform = torch.tensor(frame['transform_matrix'])

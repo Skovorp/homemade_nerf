@@ -3,10 +3,10 @@ train:
   val_batch_size: 4096
   epochs: 100
   lr: 3.0e-4
-  weight_decay: 0.01
-  val_cap: 1
+  weight_decay: 0.0
+  val_cap: 10
   data_scale: 4
-  num_workers: 0
+  num_workers: 8
 nerf:
   sample_points: 64
 model:
