@@ -82,8 +82,6 @@ for epoch in range(cfg['train']['epochs']):
             'part_white': ((color > 0.95) * 1.0).mean(),
             'color_mean': color.mean()
         })
-        # if step == 10: # cfg['train']['steps_per_epoch'] - 1:
-        #     break
     
     model.eval()
     with torch.no_grad():
