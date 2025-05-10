@@ -6,19 +6,19 @@ def psnr(x):
 
 
 def sample_points(origins, directions, N_samples):
-    near, far = 2, 6
+    near, far = 2, 6 # from paper
     bs = origins.shape[0]
     
     # bin_starts = torch.linspace(0., 1., steps=N_samples + 1, device=origins.device)[:N_samples]
     # bin_ends = torch.linspace(0., 1., steps=N_samples + 1, device=origins.device)[1:]
     # rands = torch.rand(N_samples, device=origins.device)
-    # t_vals = bin_starts * rands + bin_ends * (1 - rands)
+    # t_vals = bin_starts * rands + bin_ends * (1 - rands) # stripes
     
     bin_starts = torch.linspace(0., 1., steps=N_samples + 1, device=origins.device)[:N_samples]
     rands = torch.rand(bs, N_samples, device=origins.device)
     t_vals = bin_starts.unsqueeze(0) + rands / N_samples
     
-    # t_vals = torch.linspace(0., 1., steps=N_samples, device=origins.device)
+    # t_vals = torch.linspace(0., 1., steps=N_samples, device=origins.device) # simple
     
     
     z_vals = near * (1. - t_vals) + far * t_vals
@@ -28,10 +28,10 @@ def sample_points(origins, directions, N_samples):
     return points, z_vals
 
 def render(raw_outp, z_vals, directions):
-    stuff = raw2outputs(raw_outp, z_vals, directions, white_bkgd=True, raw_noise_std=1)
+    stuff = raw2outputs(raw_outp, z_vals, directions, raw_noise_std=1)
     return stuff[0]
 
-def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
+def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0):
     """
     Transforms model's predictions to semantically meaningful values.
     
@@ -51,10 +51,8 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
     """
 
     def raw2alpha(raw, dists, act_fn=F.relu):
-        # print("raw mean:", raw.mean())
         return 1.0 - torch.exp(-act_fn(raw) * dists)
 
-    # Compute distances between samples
     dists = z_vals[..., 1:] - z_vals[..., :-1]
     dists = torch.cat([
         dists,
@@ -70,7 +68,6 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
         noise = torch.randn_like(raw[..., 3]) * raw_noise_std
 
     alpha = raw2alpha(raw[..., 3] + noise, dists)
-    # print("mean alpha:", alpha.mean())
 
     weights = alpha * torch.cumprod(
         torch.cat([
@@ -85,7 +82,6 @@ def raw2outputs(raw, z_vals, rays_d, raw_noise_std=0.0, white_bkgd=False):
 
     disp_map = 1.0 / torch.clamp(depth_map / acc_map, min=1e-10)
 
-    if white_bkgd:
-        rgb_map = rgb_map + (1. - acc_map[..., None])
+    rgb_map = rgb_map + (1. - acc_map[..., None])
 
     return rgb_map, disp_map, acc_map, weights, depth_map
